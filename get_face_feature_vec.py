@@ -30,7 +30,12 @@ def return_face_features(path_img):
     face_array = np.array(face_descriptor).reshape((1, 128))  # 转换成numpy中的数据结构
 
     # 显示人脸区域
-    cv2.rectangle(img, (d.left(), d.top()), (d.right(), d.bottom()), (0, 255, 0), 2)
+    bb = np.zeros(4, dtype=np.int32)
+    bb[0] = np.maximum(d.left(), 0)
+    bb[1] = np.maximum(d.top(), 0)
+    bb[2] = np.minimum(d.right(), img.shape[1])
+    bb[3] = np.minimum(d.bottom(), img.shape[0])
+    cv2.rectangle(img, (bb[0], bb[1]), (bb[2], bb[3]), (0, 255, 0), 2)
     cv2.waitKey(2)
     cv2.imwrite(os.path.join(image_output_path, path_img.split('\\')[-1]), img)
     cv2.imshow('image', img)
