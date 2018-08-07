@@ -34,10 +34,16 @@ def find_most_likely_face(face_descriptor):
 
 def recognition(img):
     dets = detector(img, 1)
+    bb = np.zeros(4, dtype=np.int32)
     for k, d in enumerate(dets):
         print("Detection {}: Left: {} Top: {} Right: {} Bottom: {}".format(
             k, d.left(), d.top(), d.right(), d.bottom()))
-        rec = dlib.rectangle(d.left(), d.top(), d.right(), d.bottom())
+
+        bb[0] = np.maximum(d.left(), 0)
+        bb[1] = np.maximum(d.top(), 0)
+        bb[2] = np.minimum(d.right(), img.shape[1])
+        bb[3] = np.minimum(d.bottom(), img.shape[0])
+        rec = dlib.rectangle(bb[0], bb[1], bb[2], bb[3])
         shape = sp(img, rec)
         face_descriptor = facerec.compute_face_descriptor(img, shape)
 

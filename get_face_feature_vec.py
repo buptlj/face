@@ -24,17 +24,18 @@ def return_face_features(path_img):
     dets = detector(img, 1)  # 使用检测算子检测人脸，返回的是所有的检测到的人脸区域
     print("检测的人脸图像：", path_img, "\n")
     d = dets[0]     # 默认处理第一个检测到的人脸区域
-    rec = dlib.rectangle(d.left(), d.top(), d.right(), d.bottom())
-    shape = sp(img, rec)  # 获取landmark
-    face_descriptor = facerec.compute_face_descriptor(img, shape)  # 使用resNet获取128维的人脸特征向量
-    face_array = np.array(face_descriptor).reshape((1, 128))  # 转换成numpy中的数据结构
-
-    # 显示人脸区域
     bb = np.zeros(4, dtype=np.int32)
     bb[0] = np.maximum(d.left(), 0)
     bb[1] = np.maximum(d.top(), 0)
     bb[2] = np.minimum(d.right(), img.shape[1])
     bb[3] = np.minimum(d.bottom(), img.shape[0])
+
+    rec = dlib.rectangle(bb[0], bb[1], bb[2], bb[3])
+    shape = sp(img, rec)  # 获取landmark
+    face_descriptor = facerec.compute_face_descriptor(img, shape)  # 使用resNet获取128维的人脸特征向量
+    face_array = np.array(face_descriptor).reshape((1, 128))  # 转换成numpy中的数据结构
+
+    # 显示人脸区域
     cv2.rectangle(img, (bb[0], bb[1]), (bb[2], bb[3]), (0, 255, 0), 2)
     cv2.waitKey(2)
     cv2.imwrite(os.path.join(image_output_path, path_img.split('\\')[-1]), img)
