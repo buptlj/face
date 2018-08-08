@@ -3,18 +3,7 @@ import numpy as np
 import cv2
 import os
 import json
-
-detector = dlib.get_frontal_face_detector()
-# detector = dlib.cnn_face_detection_model_v1('mmod_human_face_detector.dat')
-sp = dlib.shape_predictor('shape_predictor_68_face_landmarks.dat')
-facerec = dlib.face_recognition_model_v1('dlib_face_recognition_resnet_model_v1.dat')
-
-image_path = './face_repo'  # 待提取特征的图像的目录
-image_output_path = './face_detect'     # 输出包含人脸框的图片
-data = np.zeros((1, 128))  # 定义一个128维的空向量data
-label = []  # 定义空的list存放人脸的标签
-
-# 返回单张图像中人脸的128D特征，默认每张图片一个人脸
+import argparse
 
 
 def return_face_features(path_img):
@@ -38,35 +27,66 @@ def return_face_features(path_img):
     # 显示人脸区域
     cv2.rectangle(img, (bb[0], bb[1]), (bb[2], bb[3]), (0, 255, 0), 2)
     cv2.waitKey(2)
-    cv2.imwrite(os.path.join(image_output_path, path_img.split('\\')[-1]), img)
+    cv2.imwrite(os.path.join(FLAGS.detected_faces, path_img.split('\\')[-1]), img)
     cv2.imshow('image', img)
     cv2.waitKey(1000)
 
     return face_array
 
-for file in os.listdir(image_path):  # 遍历目录下的文件夹及文件
-    path = os.path.join(image_path, file)
-    if os.path.isdir(path):     # 如果是目录
-        feature_tmp = np.zeros((1, 128))
-        label_name = file
-        img_num = 0
-        for image in os.listdir(path):
-            if '.jpg' in image or '.png' in image:
-                img_num += 1
-                file_name = image.split('.')[0]
-                file_path = os.path.join(path, image)
-                print('current image: {}, current label: {}'.format(file_path, label_name))
-                feature_tmp += return_face_features(file_path)
-        if img_num > 0:
-            feature = feature_tmp / img_num
-            data = np.concatenate((data, feature))  # 保存每个人的人脸特征
-            label.append(label_name)  # 保存标签
 
-data = data[1:, :]  # 因为data的第一行是128维0向量，所以实际存储的时候从第二行开始
-np.savetxt('face_feature_vec.txt', data, fmt='%f')  # 保存人脸特征向量合成的矩阵到本地
+def main():
+    data = np.zeros((1, 128))  # 定义一个128维的空向量data
+    label = []  # 定义空的list存放人脸的标签
+    for file in os.listdir(FLAGS.input_faces):  # 遍历目录下的文件夹及文件
+        path = os.path.join(FLAGS.input_faces, file)
+        if os.path.isdir(path):     # 如果是目录
+            feature_tmp = np.zeros((1, 128))
+            label_name = file
+            img_num = 0
+            for image in os.listdir(path):
+                if '.jpg' in image or '.png' in image:
+                    img_num += 1
+                    file_name = image.split('.')[0]
+                    file_path = os.path.join(path, image)
+                    print('current image: {}, current label: {}'.format(file_path, label_name))
+                    feature_tmp += return_face_features(file_path)
+            if img_num > 0:
+                feature = feature_tmp / img_num
+                data = np.concatenate((data, feature))  # 保存每个人的人脸特征
+                label.append(label_name)  # 保存标签
 
-label_file = open('label.txt', 'w')
-json.dump(label, label_file)  # 使用json保存list到本地
-label_file.close()
+    data = data[1:, :]  # 因为data的第一行是128维0向量，所以实际存储的时候从第二行开始
+    np.savetxt(FLAGS.feature_dir, data, fmt='%f')  # 保存人脸特征向量合成的矩阵到本地
+    label_file = open(FLAGS.label_dir, 'w')
+    json.dump(label, label_file)  # 使用json保存list到本地
+    label_file.close()
+    cv2.destroyAllWindows()  # 关闭所有的窗口
 
-cv2.destroyAllWindows()  # 关闭所有的窗口
+
+def parse_arguments():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--reco_model', type=str, help='the path of model',
+                        default='dlib_face_recognition_resnet_model_v1.dat')
+    parser.add_argument('--shape_predictor', type=str, help='the path of shape predictor',
+                        default='shape_predictor_68_face_landmarks.dat')
+    parser.add_argument('--input_faces', type=str, help='the path of input faces data',
+                        default='./face_repo')
+    parser.add_argument('--detected_faces', type=str, help='the path to store the detected faces',
+                        default='./face_detect')
+    parser.add_argument('--test_faces', type=str, help='use the faces to test the model`s accuracy',
+                        default='./face_test')
+    parser.add_argument('--label_dir', type=str, help='the labels of the input faces',
+                        default='./label.txt')
+    parser.add_argument('--feature_dir', type=str, help='the features of the input faces',
+                        default='./face_feature_vec.txt')
+    FLAGS, unparsed = parser.parse_known_args()
+    return FLAGS, unparsed
+
+if __name__ == '__main__':
+    FLAGS, unparsed = parse_arguments()
+    detector = dlib.get_frontal_face_detector()
+    # detector = dlib.cnn_face_detection_model_v1('mmod_human_face_detector.dat')
+    sp = dlib.shape_predictor(FLAGS.shape_predictor)
+    facerec = dlib.face_recognition_model_v1(FLAGS.reco_model)
+
+    main()

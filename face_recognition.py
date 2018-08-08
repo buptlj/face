@@ -3,17 +3,12 @@ import numpy as np
 import cv2
 import os
 import json
-
-detector = dlib.get_frontal_face_detector()
-sp = dlib.shape_predictor('shape_predictor_68_face_landmarks.dat')
-facerec = dlib.face_recognition_model_v1('dlib_face_recognition_resnet_model_v1.dat')
-image_test = './face_test/'
-threshold = 0.4
+import argparse
 
 
 def find_most_likely_face(face_descriptor):
-    face_repo = np.loadtxt('face_feature_vec.txt', dtype=float)  # 载入本地人脸特征向量
-    face_labels = open('label.txt', 'r')
+    face_repo = np.loadtxt(FLAGS.feature_dir, dtype=float)  # 载入本地人脸特征向量
+    face_labels = open(FLAGS.label_dir, 'r')
     label = json.load(face_labels)  # 载入本地人脸库的标签
     face_labels.close()
 
@@ -25,7 +20,7 @@ def find_most_likely_face(face_descriptor):
         euclidean_distance = np.linalg.norm(face_distance, axis=1, keepdims=True)
     min_distance = euclidean_distance.min()
     print('distance: ', min_distance)
-    if min_distance > threshold:
+    if min_distance > FLAGS.threshold:
         return 'other'
     index = np.argmin(euclidean_distance)
 
@@ -55,12 +50,41 @@ def recognition(img):
     cv2.imshow('image', img)
     cv2.waitKey()
 
-# 开始一张一张索引目录中的图像
-for file in os.listdir(image_test):
-    if '.jpg' in file or '.png' in file:
-        fileName = file.split('.')[0]
-        print('current image: ', file)
-        img = cv2.imread(os.path.join(image_test, file))  # 使用opencv读取图像数据
-        if img.shape[0] * img.shape[1] > 400000:  # 对大图可以进行压缩，阈值可以自己设置
-            img = cv2.resize(img, (0, 0), fx=0.5, fy=0.5)
-        recognition(img)
+
+def main():
+    # 开始一张一张索引目录中的图像
+    for file in os.listdir(FLAGS.test_faces):
+        if '.jpg' in file or '.png' in file:
+            print('current image: ', file)
+            img = cv2.imread(os.path.join(FLAGS.test_faces, file))  # 使用opencv读取图像数据
+            if img.shape[0] * img.shape[1] > 400000:  # 对大图可以进行压缩，阈值可以自己设置
+                img = cv2.resize(img, (0, 0), fx=0.5, fy=0.5)
+            recognition(img)
+
+
+def parse_arguments():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--reco_model', type=str, help='the path of model used for recognising',
+                        default='dlib_face_recognition_resnet_model_v1.dat')
+    parser.add_argument('--shape_predictor', type=str, help='the path of shape predictor',
+                        default='shape_predictor_68_face_landmarks.dat')
+    parser.add_argument('--test_faces', type=str, help='use the faces to test the model`s accuracy',
+                        default='./face_test')
+    parser.add_argument('--label_dir', type=str, help='the labels of the input faces',
+                        default='./label.txt')
+    parser.add_argument('--feature_dir', type=str, help='the features of the input faces',
+                        default='./face_feature_vec.txt')
+    parser.add_argument('--threshold', type=float,
+                        help='the threshold is used to determine whether the input face belongs to the known faces',
+                        default=0.4)
+    FLAGS, unparsed = parser.parse_known_args()
+    return FLAGS, unparsed
+
+if __name__ == '__main__':
+    FLAGS, unparsed = parse_arguments()
+    print(FLAGS)
+    detector = dlib.get_frontal_face_detector()
+    sp = dlib.shape_predictor(FLAGS.shape_predictor)
+    facerec = dlib.face_recognition_model_v1(FLAGS.reco_model)
+
+    main()
