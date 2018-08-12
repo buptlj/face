@@ -27,7 +27,9 @@ def return_face_features(path_img):
     # 显示人脸区域
     cv2.rectangle(img, (bb[0], bb[1]), (bb[2], bb[3]), (0, 255, 0), 2)
     cv2.waitKey(2)
-    cv2.imwrite(os.path.join(FLAGS.detected_faces, path_img.split('\\')[-1]), img)
+    cropped = img[bb[1]:bb[3], bb[0]:bb[2], :]
+    scaled = cv2.resize(cropped, (100, 100), interpolation=cv2.INTER_LINEAR)
+    cv2.imwrite(os.path.join(FLAGS.detected_faces, path_img.split('\\')[-1]), scaled)
     cv2.imshow('image', img)
     cv2.waitKey(1000)
 
@@ -46,7 +48,6 @@ def main():
             for image in os.listdir(path):
                 if '.jpg' in image or '.png' in image:
                     img_num += 1
-                    file_name = image.split('.')[0]
                     file_path = os.path.join(path, image)
                     print('current image: {}, current label: {}'.format(file_path, label_name))
                     feature_tmp += return_face_features(file_path)
@@ -81,6 +82,7 @@ def parse_arguments():
                         default='./face_feature_vec.txt')
     FLAGS, unparsed = parser.parse_known_args()
     return FLAGS, unparsed
+
 
 if __name__ == '__main__':
     FLAGS, unparsed = parse_arguments()
